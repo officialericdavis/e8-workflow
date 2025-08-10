@@ -1,5 +1,5 @@
-cat > app/providers/RolesProvider.tsx <<'EOF'
 'use client';
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 type Role = 'admin' | 'manager' | 'editor' | 'viewer' | null;
@@ -33,4 +33,3 @@ export function useRole() {
   if (!ctx) throw new Error('useRole must be used within RolesProvider');
   return ctx;
 }
-EOF
