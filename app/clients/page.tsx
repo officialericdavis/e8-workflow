@@ -1,7 +1,7 @@
 'use client';
-import { useRole } from ../providers/RolesProvider
-import { AMPLIFY_MOCK } from ../amplify-config
-import EditLock from ../components/EditLock
+import { useRole } from '../providers/RolesProvider';
+import { AMPLIFY_MOCK } from '../amplify-config';
+import EditLock from '../components/EditLock';
 
 export const dynamic = 'force-dynamic';
 
