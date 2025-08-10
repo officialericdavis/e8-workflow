@@ -1,8 +1,13 @@
 'use client';
 
 import '../amplify-config';
-import { RolesProvider } from '@providers/RolesProvider';
+import ToastProvider from '../components/Toasts';
+import { RolesProvider } from './RolesProvider';
 
 export default function ClientProviders({ children }: { children: React.ReactNode }) {
-  return <RolesProvider>{children}</RolesProvider>;
+  return (
+    <ToastProvider>
+      <RolesProvider>{children}</RolesProvider>
+    </ToastProvider>
+  );
 }
