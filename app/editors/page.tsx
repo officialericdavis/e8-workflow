@@ -1,61 +1,83 @@
 'use client';
-import * as React from 'react';
-import RequireAuth from '../components/RequireAuth';
-import { useRole } from '../providers/RolesProvider';
-import { loadLS, saveLS } from '../lib/retention';
 
-type Editor = { id: string; name: string; dailyCapacity: number; active: boolean; createdAt: number; };
-const KEY = 'e8_editors';
+export const dynamic = 'force-dynamic';
+
+import { useEffect, useState } from 'react';
+import { CATEGORIES, Editor } from '../lib/types';
+import { Store, initDefaults } from '../lib/store';
+import RequireAuth from '../components/RequireAuth';
+
+const card: React.CSSProperties = { background:'#fff', border:'1px solid #edf0f6', borderRadius:16, padding:16, display:'grid', gap:12 };
 
 export default function EditorsPage() {
-  const { role } = useRole();
-  const canWrite = role === 'admin' || role === 'manager';
-  const [editors, setEditors] = React.useState<Editor[]>(() => loadLS<Editor[]>(KEY, [], false));
-  const [name, setName] = React.useState('');
-  const [cap, setCap] = React.useState<number>(5);
+  const [editors, setEditors] = useState<Editor[]>([]);
+  useEffect(() => { initDefaults(); setEditors(Store.getEditors()); }, []);
 
-  React.useEffect(() => { saveLS(KEY, editors); }, [editors]);
+  function updateCap(id: string, cat: (typeof CATEGORIES)[number], value: number) {
+    const next = editors.map(e => e.id === id ? { ...e, dailyCapacity: { ...e.dailyCapacity, [cat]: Math.max(0, value|0) } } : e);
+    setEditors(next); Store.setEditors(next);
+  }
 
-  function add() {
-    const n = name.trim();
-    if (!n) return alert('Editor name required');
-    setEditors(prev => [{ id: crypto.randomUUID(), name:n, dailyCapacity: Math.max(0, Number(cap)||0), active:true, createdAt: Date.now() }, ...prev]);
-    setName(''); setCap(5);
+  function addEditor() {
+    const name = prompt('Editor name?')?.trim(); if (!name) return;
+    const base = Object.fromEntries(CATEGORIES.map(c => [c, 0])) as Editor['dailyCapacity'];
+    const next = [...editors, { id: crypto.randomUUID(), name, dailyCapacity: base }];
+    setEditors(next); Store.setEditors(next);
   }
-  function update(id: string, patch: Partial<Editor>) {
-    setEditors(prev => prev.map(e => e.id === id ? { ...e, ...patch } : e));
+
+  function renameEditor(id: string) {
+    const cur = editors.find(e => e.id === id); if (!cur) return;
+    const name = prompt('Rename editor', cur.name)?.trim(); if (!name) return;
+    const next = editors.map(e => e.id === id ? { ...e, name } : e);
+    setEditors(next); Store.setEditors(next);
   }
-  function remove(id: string) {
-    if (!confirm('Remove editor profile?')) return;
-    setEditors(prev => prev.filter(e => e.id !== id));
+
+  function removeEditor(id: string) {
+    if (!confirm('Remove editor?')) return;
+    const next = editors.filter(e => e.id !== id);
+    setEditors(next); Store.setEditors(next);
   }
 
   return (
     <RequireAuth>
-      <main style={{ display:'grid', gap:16 }}>
-        <h1 style={{ margin:0, fontWeight:900 }}>Editors</h1>
-        <section style={card}>
-          <h2 style={{ margin:'0 0 8px' }}>Add Editor</h2>
-          <div style={{ display:'grid', gap:8, gridTemplateColumns:'1fr 180px' }}>
-            <input placeholder="Name *" value={name} onChange={e=>setName(e.target.value)} style={inp}/>
-            <input type="number" min={0} value={cap} onChange={e=>setCap(Number(e.target.value)||0)} style={inp}/>
-          </div>
-          <div><button onClick={add} disabled={!canWrite} style={btnPrimary}>Create</button></div>
-        </section>
+      <main style={{ padding: 24, display:'grid', gap:16 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <h1 style={{ margin:0 }}>Editors & Daily Capacity</h1>
+          <button onClick={addEditor} style={{ padding:'8px 12px', borderRadius:10, border:'1px solid #dfe4ee', background:'#111827', color:'#fff' }}>New Editor</button>
+        </div>
 
         <section style={card}>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
-            <thead><tr><th style={th}>Editor</th><th style={th}>Daily Capacity</th><th style={th}>Active</th><th style={th}></th></tr></thead>
+            <thead>
+              <tr>
+                <th style={{ textAlign:'left', padding:10 }}>Editor</th>
+                {CATEGORIES.map(cat => <th key={cat} style={{ textAlign:'right', padding:10 }}>{cat}/day</th>)}
+                <th />
+              </tr>
+            </thead>
             <tbody>
-              {editors.map(e => (
-                <tr key={e.id} style={{ borderTop:'1px solid #f3f4f6' }}>
-                  <td style={td}><input value={e.name} onChange={ev=>update(e.id,{name:ev.target.value})} disabled={!canWrite} style={inp}/></td>
-                  <td style={td}><input type="number" min={0} value={e.dailyCapacity} onChange={ev=>update(e.id,{dailyCapacity: Math.max(0, Number(ev.target.value)||0)})} disabled={!canWrite} style={inp}/></td>
-                  <td style={td}><label style={{ display:'inline-flex', gap:8, alignItems:'center' }}><input type="checkbox" checked={e.active} onChange={ev=>update(e.id,{active: ev.target.checked})} disabled={!canWrite}/>{e.active ? 'Active' : 'Paused'}</label></td>
-                  <td style={{ ...td, textAlign:'right' }}><button onClick={()=>remove(e.id)} disabled={!canWrite} style={btnGhost}>Delete</button></td>
+              {editors.map(ed => (
+                <tr key={ed.id} style={{ borderTop:'1px solid #edf0f6' }}>
+                  <td style={{ padding:10, fontWeight:600 }}>
+                    <div>{ed.name}</div>
+                    <div style={{ display:'flex', gap:8, marginTop:6 }}>
+                      <button onClick={() => renameEditor(ed.id)} style={{ fontSize:12, border:'1px solid #e5e7eb', borderRadius:8, padding:'4px 8px', background:'#fff' }}>Rename</button>
+                      <button onClick={() => removeEditor(ed.id)} style={{ fontSize:12, border:'1px solid #f3d1d1', color:'#991b1b', borderRadius:8, padding:'4px 8px', background:'#fff' }}>Remove</button>
+                    </div>
+                  </td>
+                  {CATEGORIES.map(cat => (
+                    <td key={cat} style={{ padding:10, textAlign:'right' }}>
+                      <input
+                        type="number" min={0}
+                        value={ed.dailyCapacity[cat] ?? 0}
+                        onChange={(e) => updateCap(ed.id, cat, Number(e.target.value))}
+                        style="width:90px; text-align:right; padding:6px 8px; border:1px solid #dfe4ee; border-radius:8px;"
+                      />
+                    </td>
+                  ))}
+                  <td />
                 </tr>
               ))}
-              {editors.length === 0 && <tr><td colSpan={4} style={{...td,color:'#6b7280'}}>No editors yet.</td></tr>}
             </tbody>
           </table>
         </section>
@@ -63,10 +85,3 @@ export default function EditorsPage() {
     </RequireAuth>
   );
 }
-
-const card: React.CSSProperties = { background:'#fff', border:'1px solid #edf0f6', borderRadius:16, padding:16, display:'grid', gap:12 };
-const th: React.CSSProperties = { textAlign:'left', fontSize:12, color:'#6b7280', padding:'10px' };
-const td: React.CSSProperties = { padding:'10px' };
-const inp: React.CSSProperties = { height:40, border:'1px solid #e5e7eb', borderRadius:12, padding:'0 12px', width:'100%' };
-const btnPrimary: React.CSSProperties = { height:40, padding:'0 14px', borderRadius:12, fontWeight:900, border:'1px solid #111827', background:'#111827', color:'#fff' };
-const btnGhost: React.CSSProperties = { height:32, padding:'0 10px', borderRadius:10, border:'1px solid #e5e7eb', background:'#fff' };

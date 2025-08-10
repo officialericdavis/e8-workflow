@@ -1,83 +1,111 @@
 'use client';
-import * as React from 'react';
-import RequireAuth from '../components/RequireAuth';
-import { useRole } from '../providers/RolesProvider';
-import { loadLS, saveLS } from '../lib/retention';
 
-type Client = { id: string; name: string; monthlyTarget: number; notes?: string; active: boolean; createdAt: number; };
-const KEY = 'e8_clients';
+export const dynamic = 'force-dynamic';
+
+import { useEffect, useMemo, useState } from 'react';
+import { CATEGORIES, Client } from '../lib/types';
+import { Store, initDefaults } from '../lib/store';
+import RequireAuth from '../components/RequireAuth';
+
+const card: React.CSSProperties = { background:'#fff', border:'1px solid #edf0f6', borderRadius:16, padding:16, display:'grid', gap:12 };
 
 export default function ClientsPage() {
-  const { role } = useRole();
-  const canWrite = role === 'admin' || role === 'manager';
-  const [clients, setClients] = React.useState<Client[]>(() => loadLS<Client[]>(KEY, [], false));
-  const [name, setName] = React.useState(''); 
-  const [monthly, setMonthly] = React.useState<number>(10);
-  const [notes, setNotes] = React.useState('');
+  const [clients, setClients] = useState<Client[]>([]);
 
-  React.useEffect(() => { saveLS(KEY, clients); }, [clients]);
+  useEffect(() => { initDefaults(); setClients(Store.getClients()); }, []);
+
+  const totals = useMemo(() => {
+    const sum: Record<string, number> = {};
+    CATEGORIES.forEach(c => sum[c] = 0);
+    clients.forEach(cl => CATEGORIES.forEach(c => sum[c] += cl.targets[c] || 0));
+    return sum;
+  }, [clients]);
+
+  function updateTarget(id: string, cat: (typeof CATEGORIES)[number], value: number) {
+    const next = clients.map(c => c.id === id ? { ...c, targets: { ...c.targets, [cat]: Math.max(0, value|0) } } : c);
+    setClients(next); Store.setClients(next);
+  }
 
   function addClient() {
-    const n = name.trim();
-    if (!n) return alert('Client name is required');
-    setClients(prev => [{
-      id: crypto.randomUUID(), name: n, monthlyTarget: Math.max(0, Number(monthly)||0),
-      notes: notes.trim() || undefined, active: true, createdAt: Date.now()
-    }, ...prev]);
-    setName(''); setMonthly(10); setNotes('');
+    const name = prompt('Client name?')?.trim();
+    if (!name) return;
+    const base = Object.fromEntries(CATEGORIES.map(c => [c, 0]));
+    const next = [...clients, { id: crypto.randomUUID(), name, targets: base as Client['targets'] }];
+    setClients(next); Store.setClients(next);
   }
-  function update(id: string, patch: Partial<Client>) {
-    setClients(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c));
+
+  function renameClient(id: string) {
+    const current = clients.find(c => c.id === id); if (!current) return;
+    const name = prompt('Rename client', current.name)?.trim(); if (!name) return;
+    const next = clients.map(c => c.id === id ? { ...c, name } : c);
+    setClients(next); Store.setClients(next);
   }
-  function remove(id: string) {
-    if (!confirm('Remove this client?')) return;
-    setClients(prev => prev.filter(c => c.id !== id));
+
+  function removeClient(id: string) {
+    if (!confirm('Remove client?')) return;
+    const next = clients.filter(c => c.id !== id);
+    setClients(next); Store.setClients(next);
   }
 
   return (
     <RequireAuth>
-      <main style={{ display:'grid', gap:16 }}>
-        <h1 style={{ margin:0, fontWeight:900 }}>Clients</h1>
-
-        <section style={card}>
-          <h2 style={{ margin:'0 0 8px' }}>Add Client</h2>
-          <div style={{ display:'grid', gap:8, gridTemplateColumns:'1fr 180px' }}>
-            <input placeholder="Client name *" value={name} onChange={e=>setName(e.target.value)} style={inp}/>
-            <input type="number" min={0} placeholder="Monthly target *" value={monthly} onChange={e=>setMonthly(Number(e.target.value)||0)} style={inp}/>
-          </div>
-          <textarea placeholder="Notes (optional)" value={notes} onChange={e=>setNotes(e.target.value)} style={{...inp, minHeight:90}}/>
-          <div><button onClick={addClient} disabled={!canWrite} style={btnPrimary}>Create</button></div>
-          {!canWrite && <div style={muted}>View only — editors/viewers can’t add clients.</div>}
-        </section>
+      <main style={{ padding: 24, display:'grid', gap:16 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <h1 style={{ margin:0 }}>Clients & Monthly Targets</h1>
+          <button onClick={addClient} style={{ padding:'8px 12px', borderRadius:10, border:'1px solid #dfe4ee', background:'#111827', color:'#fff' }}>New Client</button>
+        </div>
 
         <section style={card}>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead>
-              <tr><th style={th}>Client</th><th style={th}>Monthly Target</th><th style={th}>Active</th><th style={th}>Notes</th><th style={th}></th></tr>
+              <tr>
+                <th style={{ textAlign:'left', padding:10 }}>Client</th>
+                {CATEGORIES.map(cat => <th key={cat} style={{ textAlign:'right', padding:10 }}>{cat}</th>)}
+                <th style={{ textAlign:'right', padding:10 }}>Total</th>
+                <th style={{ width:1 }}></th>
+              </tr>
             </thead>
             <tbody>
-              {clients.map(c => (
-                <tr key={c.id} style={{ borderTop:'1px solid #f3f4f6' }}>
-                  <td style={td}><input value={c.name} onChange={e=>update(c.id,{name:e.target.value})} disabled={!canWrite} style={inp}/></td>
-                  <td style={td}><input type="number" min={0} value={c.monthlyTarget} onChange={e=>update(c.id,{monthlyTarget: Math.max(0, Number(e.target.value)||0)})} disabled={!canWrite} style={inp}/></td>
-                  <td style={td}><label style={{ display:'inline-flex', gap:8, alignItems:'center' }}><input type="checkbox" checked={c.active} onChange={e=>update(c.id,{active:e.target.checked})} disabled={!canWrite}/>{c.active ? 'Active' : 'Paused'}</label></td>
-                  <td style={td}><input value={c.notes||''} onChange={e=>update(c.id,{notes:e.target.value})} disabled={!canWrite} style={inp}/></td>
-                  <td style={{ ...td, textAlign:'right' }}><button onClick={()=>remove(c.id)} disabled={!canWrite} style={btnGhost}>Delete</button></td>
-                </tr>
-              ))}
-              {clients.length===0 && <tr><td colSpan={5} style={{...td,color:'#6b7280'}}>No clients yet.</td></tr>}
+              {clients.map(cl => {
+                const total = CATEGORIES.reduce((s, c) => s + (cl.targets[c]||0), 0);
+                return (
+                  <tr key={cl.id} style={{ borderTop:'1px solid #edf0f6' }}>
+                    <td style={{ padding:10, fontWeight:600, maxWidth:220 }}>
+                      <span>{cl.name}</span>
+                      <div style={{ display:'flex', gap:8, marginTop:6 }}>
+                        <button onClick={() => renameClient(cl.id)} style={{ fontSize:12, border:'1px solid #e5e7eb', borderRadius:8, padding:'4px 8px', background:'#fff' }}>Rename</button>
+                        <button onClick={() => removeClient(cl.id)} style={{ fontSize:12, border:'1px solid #f3d1d1', color:'#991b1b', borderRadius:8, padding:'4px 8px', background:'#fff' }}>Remove</button>
+                      </div>
+                    </td>
+                    {CATEGORIES.map(cat => (
+                      <td key={cat} style={{ padding:10, textAlign:'right' }}>
+                        <input
+                          type="number" min={0}
+                          value={cl.targets[cat] ?? 0}
+                          onChange={(e) => updateTarget(cl.id, cat, Number(e.target.value))}
+                          style="width:90px; text-align:right; padding:6px 8px; border:1px solid #dfe4ee; border-radius:8px;"
+                        />
+                      </td>
+                    ))}
+                    <td style={{ padding:10, textAlign:'right', fontWeight:700 }}>{total}</td>
+                    <td />
+                  </tr>
+                );
+              })}
             </tbody>
+            <tfoot>
+              <tr style={{ borderTop:'2px solid #e5e7eb' }}>
+                <td style={{ padding:10, fontWeight:700 }}>Totals</td>
+                {CATEGORIES.map(cat => <td key={cat} style={{ padding:10, textAlign:'right', fontWeight:700 }}>{totals[cat]}</td>)}
+                <td style={{ padding:10, textAlign:'right', fontWeight:900 }}>
+                  {Object.values(totals).reduce((a,b)=>a+b,0)}
+                </td>
+                <td />
+              </tr>
+            </tfoot>
           </table>
         </section>
       </main>
     </RequireAuth>
   );
 }
-
-const card: React.CSSProperties = { background:'#fff', border:'1px solid #edf0f6', borderRadius:16, padding:16, display:'grid', gap:12 };
-const th: React.CSSProperties = { textAlign:'left', fontSize:12, color:'#6b7280', padding:'10px' };
-const td: React.CSSProperties = { padding:'10px' };
-const inp: React.CSSProperties = { height:40, border:'1px solid #e5e7eb', borderRadius:12, padding:'0 12px', width:'100%' };
-const btnPrimary: React.CSSProperties = { height:40, padding:'0 14px', borderRadius:12, fontWeight:900, border:'1px solid #111827', background:'#111827', color:'#fff' };
-const btnGhost: React.CSSProperties = { height:32, padding:'0 10px', borderRadius:10, border:'1px solid #e5e7eb', background:'#fff' };
-const muted: React.CSSProperties = { color:'#6b7280', fontSize:12 };
