@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useMemo, useState } from 'react';
 import { CATEGORIES, Client } from '../lib/types';
-import { Store, initDefaults } from '../lib/store';
+import { Store } from '../lib/store';
 import RequireAuth from '../components/RequireAuth';
 
 const card: React.CSSProperties = { background:'#fff', border:'1px solid #edf0f6', borderRadius:16, padding:16, display:'grid', gap:12 };
@@ -13,7 +13,6 @@ const inputNarrow: React.CSSProperties = { width: 90, textAlign:'right', padding
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
 
-  useEffect(() => { initDefaults(); setClients(Store.getClients()); }, []);
 
   const totals = useMemo(() => {
     const sum: Record<string, number> = {};

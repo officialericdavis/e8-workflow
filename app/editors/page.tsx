@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
 import { CATEGORIES, Editor } from '../lib/types';
-import { Store, initDefaults } from '../lib/store';
+import { Store } from '../lib/store';
 import RequireAuth from '../components/RequireAuth';
 
 const card: React.CSSProperties = { background:'#fff', border:'1px solid #edf0f6', borderRadius:16, padding:16, display:'grid', gap:12 };
@@ -12,7 +12,6 @@ const inputNarrow: React.CSSProperties = { width: 90, textAlign:'right', padding
 
 export default function EditorsPage() {
   const [editors, setEditors] = useState<Editor[]>([]);
-  useEffect(() => { initDefaults(); setEditors(Store.getEditors()); }, []);
 
   function updateCap(id: string, cat: (typeof CATEGORIES)[number], value: number) {
     const next = editors.map(e => e.id === id ? { ...e, dailyCapacity: { ...e.dailyCapacity, [cat]: Math.max(0, value|0) } } : e);
