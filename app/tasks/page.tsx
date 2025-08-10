@@ -31,7 +31,7 @@ export default function TasksPage() {
   const search = useSearchParams();
   const { show } = useToast();
 
-  // helpers
+  // strip ?new=1 from URL so the modal doesn't reopen
   function clearNewParam() {
     try {
       const url = new URL(window.location.href);
@@ -46,7 +46,7 @@ export default function TasksPage() {
   useEffect(() => { try { const raw = localStorage.getItem(KEY); if (raw) setTasks(JSON.parse(raw)); } catch {} }, []);
   useEffect(() => { try { localStorage.setItem(KEY, JSON.stringify(tasks)); } catch {} }, [tasks]);
 
-  // deep-link /tasks?new=1 — open once, then strip the param
+  // deep-link open
   useEffect(() => {
     if (search.get('new') === '1' && !open) {
       setDraft({ ...emptyTask, id: crypto.randomUUID() });
@@ -56,7 +56,7 @@ export default function TasksPage() {
     }
   }, [search, open]);
 
-  const canSave = useMemo(() => draft.title.trim().length > 0, [draft.title]);
+  const canSave = draft.title.trim().length > 0;
 
   function startNew() {
     setDraft({ ...emptyTask, id: crypto.randomUUID() });
@@ -83,7 +83,6 @@ export default function TasksPage() {
     show('Task deleted', 'error');
   }
 
-  // filters
   const filtered = useMemo(() => {
     const qp = query.trim().toLowerCase();
     return tasks.filter(t => {
@@ -94,7 +93,6 @@ export default function TasksPage() {
     });
   }, [tasks, query, selP, selS]);
 
-  // dnd reorder
   function onDrop(overId: string) {
     if (!dragId || dragId === overId) return;
     const from = tasks.findIndex(t => t.id === dragId);
@@ -211,7 +209,6 @@ export default function TasksPage() {
   );
 }
 
-// ---- UI helpers ----
 function toggleSet<T>(s: Set<T>, v: T) {
   const next = new Set(s);
   if (next.has(v)) next.delete(v); else next.add(v);
