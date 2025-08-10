@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import RequireAuth from '../components/RequireAuth';
 import { useToast } from '../components/Toasts';
+
+export const dynamic = 'force-dynamic'; // avoid static pre-render issues
 
 type Priority = 'Low' | 'Medium' | 'High' | 'Urgent';
 type Status = 'Open' | 'In Progress' | 'Blocked' | 'Done';
@@ -19,7 +21,7 @@ type Task = {
 const emptyTask: Task = { id: '', title: '', assignee: '', due: '', priority: 'Medium', status: 'Open' };
 const KEY = 'e8_tasks';
 
-export default function TasksPage() {
+function TasksApp() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Task>(emptyTask);
@@ -31,7 +33,6 @@ export default function TasksPage() {
   const search = useSearchParams();
   const { show } = useToast();
 
-  // strip ?new=1 from URL so the modal doesn't reopen
   function clearNewParam() {
     try {
       const url = new URL(window.location.href);
@@ -42,11 +43,9 @@ export default function TasksPage() {
     } catch {}
   }
 
-  // load/save local tasks
   useEffect(() => { try { const raw = localStorage.getItem(KEY); if (raw) setTasks(JSON.parse(raw)); } catch {} }, []);
   useEffect(() => { try { localStorage.setItem(KEY, JSON.stringify(tasks)); } catch {} }, [tasks]);
 
-  // deep-link open
   useEffect(() => {
     if (search.get('new') === '1' && !open) {
       setDraft({ ...emptyTask, id: crypto.randomUUID() });
@@ -206,6 +205,14 @@ export default function TasksPage() {
         )}
       </div>
     </RequireAuth>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <TasksApp />
+    </Suspense>
   );
 }
 
