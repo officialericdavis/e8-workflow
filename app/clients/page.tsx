@@ -1,4 +1,7 @@
 'use client';
+import { useRole } from ../providers/RolesProvider
+import { AMPLIFY_MOCK } from ../amplify-config
+import EditLock from ../components/EditLock
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +51,7 @@ export default function ClientsPage() {
   }
 
   return (
+    <EditLock allowed={canEdit}>
     <RequireAuth>
       <main style={{ padding: 24, display:'grid', gap:16 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
@@ -105,6 +109,7 @@ export default function ClientsPage() {
             </tfoot>
           </table>
         </section>
+    </EditLock>
       </main>
     </RequireAuth>
   );
