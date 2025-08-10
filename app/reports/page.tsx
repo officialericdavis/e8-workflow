@@ -1,71 +1,76 @@
 'use client';
-
+import * as React from 'react';
 import RequireAuth from '../components/RequireAuth';
-import { useRole } from '../providers/RolesProvider';
-import { can } from '@/lib/roles';
-import { useEffect, useMemo, useState } from 'react';
-import { loadLS, saveLS, purgeByAge } from '@/lib/retention';
+import { loadLS } from '../lib/retention';
 
-type Report = { id: string; name: string; summary?: string; createdAt: number; };
+type Client = { id:string; name:string; monthlyTarget:number; active:boolean; };
+type Task = { id:string; title:string; client?:string; assignee?:string; due?:string; status?:'Open'|'In Progress'|'Blocked'|'Done'; completedAt?:number; createdAt:number; };
+type Editor = { id:string; name:string; dailyCapacity:number; active:boolean; };
 
-const KEY = 'e8_reports';
+const CLIENTS_KEY = 'e8_clients';
+const TASKS_KEY = 'e8_tasks';
+const EDITORS_KEY = 'e8_editors';
 
-export default function ReportsPage() {
-  const { role } = useRole();
-  const canRead = can(role, 'reports:r');
-  const canWrite = can(role, 'reports:rw');
+const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+const startOfNextMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth()+1, 1).getTime();
+const isInMonth = (ts: number|undefined|null, now = new Date()) =>
+  typeof ts === 'number' && ts >= startOfMonth(now) && ts < startOfNextMonth(now);
 
-  const [list, setList] = useState<Report[]>([]);
-  const [name, setName] = useState('Weekly KPI Snapshot');
-  const [summary, setSummary] = useState('Leads up 12%, cycle time down 6%.');
+export default function Reports() {
+  const clients = loadLS<Client[]>(CLIENTS_KEY, [], false);
+  const tasks   = loadLS<Task[]>(TASKS_KEY, [], true);
+  const editors = loadLS<Editor[]>(EDITORS_KEY, [], false);
 
-  useEffect(() => { setList(purgeByAge(loadLS(KEY, [], true))); }, []);
-  useEffect(() => { saveLS(KEY, list); }, [list]);
+  const now = new Date();
+  const byClient = groupByClient(clients, tasks, now);
+  const byEditorToday = groupByEditorToday(editors, tasks, now);
 
-  const sorted = useMemo(() => [...list].sort((a,b)=>b.createdAt - a.createdAt), [list]);
-
-  function saveSnapshot() {
-    if (!canWrite) return;
-    const r: Report = { id: crypto.randomUUID(), name: name.trim() || 'Report', summary, createdAt: Date.now() };
-    setList(prev => [r, ...prev]);
-  }
-  function remove(id: string) {
-    if (!canWrite) return;
-    setList(prev => prev.filter(r => r.id !== id));
-  }
-
-  if (!canRead) return <RequireAuth><div /></RequireAuth>;
+  const totalTarget = byClient.reduce((s,c)=>s + c.target, 0);
+  const totalDone   = byClient.reduce((s,c)=>s + c.done, 0);
 
   return (
     <RequireAuth>
       <main style={{ display:'grid', gap:16 }}>
         <h1 style={{ margin:0, fontWeight:900 }}>Reports</h1>
 
-        {/* Snapshot creator */}
-        <section style={{ background:'#fff', border:'1px solid #edf0f6', borderRadius:16, padding:16, display:'grid', gap:10, opacity:canWrite?1:.6 }}>
-          <h2 style={{ margin:0 }}>Save snapshot</h2>
-          <input placeholder="Report title" value={name} onChange={e=>setName(e.target.value)} style={inp}/>
-          <textarea placeholder="Short summary" rows={4} value={summary} onChange={e=>setSummary(e.target.value)} style={{ ...inp, minHeight:100 }} />
-          <div><button disabled={!canWrite} onClick={saveSnapshot} style={btnPrimary}>Save</button></div>
-          {!canWrite && <div style={{ color:'#6b7280', fontSize:12 }}>View only — your role cannot save reports.</div>}
+        <section style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
+          <Kpi title="Clients with Targets" value={clients.filter(c=>c.active && c.monthlyTarget>0).length.toString()} />
+          <Kpi title="Month Deliverables (Done)" value={totalDone.toString()} />
+          <Kpi title="Target vs Actual" value={`${totalDone} / ${totalTarget}`} />
         </section>
 
-        {/* List of saved reports */}
-        <section style={{ background:'#fff', border:'1px solid #edf0f6', borderRadius:16, padding:8 }}>
+        <section style={card}>
+          <h2 style={{ margin:'0 0 4px' }}>Client Progress (This Month)</h2>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
-            <thead>
-              <tr><th style={th}>Title</th><th style={th}>Created</th><th style={th}>Summary</th><th style={th}></th></tr>
-            </thead>
+            <thead><tr><th style={th}>Client</th><th style={th}>Done</th><th style={th}>Target</th><th style={th}>Progress</th></tr></thead>
             <tbody>
-              {sorted.map(r => (
-                <tr key={r.id} style={{ borderTop:'1px solid #f3f4f6' }}>
-                  <td style={td}>{r.name}</td>
-                  <td style={td}>{new Date(r.createdAt).toLocaleString()}</td>
-                  <td style={td}>{r.summary || '-'}</td>
-                  <td style={{ ...td, textAlign:'right' }}>{canWrite && <button onClick={()=>remove(r.id)} style={btnGhost}>Delete</button>}</td>
+              {byClient.map(row => (
+                <tr key={row.name} style={{ borderTop:'1px solid #f3f4f6' }}>
+                  <td style={td}>{row.name}</td>
+                  <td style={td}>{row.done}</td>
+                  <td style={td}>{row.target}</td>
+                  <td style={{ ...td, width:260 }}><Bar pct={row.target>0 ? Math.min(100, Math.round(100*row.done/row.target)) : 0} /></td>
                 </tr>
               ))}
-              {sorted.length === 0 && <tr><td colSpan={4} style={{ ...td, color:'#6b7280' }}>No saved reports (last 90 days).</td></tr>}
+              {byClient.length === 0 && <tr><td colSpan={4} style={{...td,color:'#6b7280'}}>No clients/targets yet.</td></tr>}
+            </tbody>
+          </table>
+        </section>
+
+        <section style={card}>
+          <h2 style={{ margin:'0 0 4px' }}>Editor Utilization (Today)</h2>
+          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+            <thead><tr><th style={th}>Editor</th><th style={th}>Done Today</th><th style={th}>Capacity</th><th style={th}>Utilization</th></tr></thead>
+            <tbody>
+              {byEditorToday.map(e => (
+                <tr key={e.name} style={{ borderTop:'1px solid #f3f4f6' }}>
+                  <td style={td}>{e.name}</td>
+                  <td style={td}>{e.done}</td>
+                  <td style={td}>{e.capacity}</td>
+                  <td style={{ ...td, width:260 }}><Bar pct={e.capacity>0 ? Math.min(100, Math.round(100*e.done/e.capacity)) : 0} /></td>
+                </tr>
+              ))}
+              {byEditorToday.length === 0 && <tr><td colSpan={4} style={{...td,color:'#6b7280'}}>No editor completions today.</td></tr>}
             </tbody>
           </table>
         </section>
@@ -74,8 +79,56 @@ export default function ReportsPage() {
   );
 }
 
-const th: React.CSSProperties = { textAlign:'left', fontSize:12, color:'#6b7280', padding:'10px' };
-const td: React.CSSProperties = { padding:'10px' };
-const inp: React.CSSProperties = { border:'1px solid #e5e7eb', borderRadius:12, padding:'8px 12px' };
-const btnPrimary: React.CSSProperties = { height:40, padding:'0 14px', borderRadius:12, fontWeight:900, border:'1px solid #111827', background:'#111827', color:'#fff' };
-const btnGhost: React.CSSProperties = { height:32, padding:'0 12px', borderRadius:10, border:'1px solid #e5e7eb', background:'#fff' };
+function groupByClient(clients: Client[], tasks: Task[], now: Date) {
+  const map = new Map<string,{ name:string; target:number; done:number }>();
+  for (const c of clients) map.set(c.name, { name:c.name, target: c.active ? c.monthlyTarget : 0, done:0 });
+  for (const t of tasks) {
+    const completedInMonth = isInMonth(t.completedAt, now);
+    const dueTs = t.due ? new Date(t.due).getTime() : undefined;
+    const dueInMonth = isInMonth(dueTs, now);
+    if (t.status === 'Done' && (completedInMonth || dueInMonth)) {
+      const key = t.client || 'Unassigned';
+      if (!map.has(key)) map.set(key, { name:key, target:0, done:0 });
+      map.get(key)!.done += 1;
+    }
+  }
+  return Array.from(map.values()).sort((a,b)=>a.name.localeCompare(b.name));
+}
+
+function groupByEditorToday(editors: Editor[], tasks: Task[], now: Date) {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const end = start + 24*60*60*1000;
+  const capMap = new Map<string,number>();
+  for (const e of editors) if (e.active) capMap.set(e.name, e.dailyCapacity);
+
+  const doneCount = new Map<string,number>();
+  for (const t of tasks) {
+    const ts = t.completedAt ?? 0;
+    if (t.status === 'Done' && ts >= start && ts < end) {
+      const who = t.assignee || 'Unassigned';
+      doneCount.set(who, (doneCount.get(who)||0) + 1);
+      if (!capMap.has(who)) capMap.set(who, 5);
+    }
+  }
+
+  const rows: { name:string; done:number; capacity:number }[] = [];
+  for (const [name, capacity] of capMap.entries()) rows.push({ name, capacity, done: doneCount.get(name)||0 });
+  return rows.sort((a,b)=>a.name.localeCompare(b.name));
+}
+
+function Bar({ pct }: { pct:number }) {
+  return (
+    <div style={{ height:12, background:'#edf0f6', borderRadius:999, overflow:'hidden' }}>
+      <div style={{ height:'100%', width:`${pct}%`, background:'#111827' }} />
+    </div>
+  );
+}
+
+function Kpi({ title, value }: { title:string; value:string }) {
+  return (
+    <div style={{ background:'#fff', border:'1px solid #edf0f6', borderRadius:16, padding:16 }}>
+      <div style={{ fontSize:12, color:'#6b7280' }}>{title}</div>
+      <div style={{ fontSize:28, fontWeight:900 }}>{value}</div>
+    </div>
+  );
+}

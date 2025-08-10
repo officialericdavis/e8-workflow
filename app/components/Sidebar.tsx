@@ -1,35 +1,34 @@
 'use client';
-
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import React from 'react';
 
-const LINKS = [
-  { href: '/',              label: 'Dashboard',    emoji: '📥' },
-  { href: '/tasks',         label: 'Tasks',        emoji: '🧩' },
-  { href: '/quality-control',label: 'Quality Control', emoji: '✅' },
-  { href: '/scheduling',    label: 'Scheduling',   emoji: '📅' },
-  { href: '/reports',       label: 'Reports',      emoji: '📊' },
-  { href: '/integrations',  label: 'Integrations', emoji: '🔌' },
+const nav = [
+  { href: '/', label: 'Dashboard' },
+  { href: '/tasks', label: 'Tasks' },
+  { href: '/scheduling', label: 'Scheduling' },
+  { href: '/quality-control', label: 'Quality Control' },
+  { href: '/clients', label: 'Clients' },
+  { href: '/editors', label: 'Editors' },
+  { href: '/reports', label: 'Reports' },
+  { href: '/integrations', label: 'Integrations' },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname() || '/';
   return (
-    <aside style={aside}>
-      <div style={{ fontWeight: 900, fontSize: 18, marginBottom: 12 }}>E8 Productions</div>
-      <nav style={{ display: 'grid', gap: 8 }}>
-        {LINKS.map(({ href, label, emoji }) => {
-          const active = pathname === href;
+    <aside style={{ borderRight:'1px solid #edf0f6', background:'#fff', padding:16 }}>
+      <div style={{ fontWeight:900, marginBottom:12 }}>E8 Workflow</div>
+      <nav style={{ display:'grid', gap:6 }}>
+        {nav.map(item => {
+          const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
           return (
-            <Link key={href} href={href} style={{
-              ...item,
-              background: active ? '#111827' : '#fff',
-              color: active ? '#fff' : '#111827',
-              borderColor: active ? '#111827' : '#e5e7eb'
+            <Link key={item.href} href={item.href} style={{
+              display:'block', padding:'10px 12px', borderRadius:10,
+              textDecoration:'none', color: active ? '#fff' : '#111827',
+              background: active ? '#111827' : 'transparent',
+              border: active ? '1px solid #111827' : '1px solid #e5e7eb'
             }}>
-              <span style={{ marginRight: 10 }}>{emoji}</span>
-              {label}
+              {item.label}
             </Link>
           );
         })}
@@ -37,24 +36,3 @@ export default function Sidebar() {
     </aside>
   );
 }
-
-const aside: React.CSSProperties = {
-  padding: 16,
-  borderRight: '1px solid #edf0f6',
-  background: '#fff',
-  minHeight: '100dvh',
-  width: 260,
-  position: 'sticky',
-  top: 0
-};
-
-const item: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  height: 44,
-  padding: '0 14px',
-  borderRadius: 12,
-  fontWeight: 800,
-  textDecoration: 'none',
-  border: '1px solid',
-};
