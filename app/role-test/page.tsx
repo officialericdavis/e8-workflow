@@ -1,9 +1,10 @@
+cat > app/role-test/page.tsx <<'EOF'
 'use client';
 
-import { useRoles } from '../providers/RolesProvider';
+import { useRole } from '../providers/RolesProvider';
 
 export default function RoleTestPage() {
-  const { role, setRole } = useRoles();
+  const { role, setRole, signOut } = useRole();
 
   const renderRoleContent = () => {
     switch (role) {
@@ -23,16 +24,15 @@ export default function RoleTestPage() {
   return (
     <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
       <h1>Current Role: {role ?? 'none'}</h1>
-      <div style={{ marginTop: 10 }}>
+      <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button onClick={() => setRole('admin')}>Set Admin</button>
         <button onClick={() => setRole('manager')}>Set Manager</button>
         <button onClick={() => setRole('editor')}>Set Editor</button>
         <button onClick={() => setRole('viewer')}>Set Viewer</button>
-        <button onClick={() => setRole(null)}>Clear Role</button>
+        <button onClick={signOut}>Clear Role</button>
       </div>
-      <div style={{ marginTop: 20 }}>
-        {renderRoleContent()}
-      </div>
+      <div style={{ marginTop: 20 }}>{renderRoleContent()}</div>
     </div>
   );
 }
+EOF
