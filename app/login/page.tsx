@@ -1,27 +1,43 @@
 'use client';
 
 import '@aws-amplify/ui-react/styles.css';
-import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react';
-import { useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
+import { Authenticator } from '@aws-amplify/ui-react';
 import { AMPLIFY_MOCK } from '../amplify-config';
+import { fetchAuthSession } from 'aws-amplify/auth';
 
-export default function LoginPage() {
+export const dynamic = 'force-dynamic';
+
+function LoginInner() {
   const router = useRouter();
-  const next = useSearchParams()?.get('next') || '/';
-  const { authStatus } = useAuthenticator((ctx) => [ctx.authStatus]);
+  const [nextUrl, setNextUrl] = useState('/');
 
-  // If running in mock mode, skip login
+  // Read ?next=... from the URL on the client (no useSearchParams)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search).get('next') || '/';
+      setNextUrl(p);
+    }
+  }, []);
+
+  // Mock mode: skip login entirely
   useEffect(() => {
     if (AMPLIFY_MOCK) router.replace('/');
   }, [router]);
 
-  // After real sign-in, go to destination
+  // If already signed in, bounce to nextUrl
   useEffect(() => {
-    if (authStatus === 'authenticated') {
-      router.replace(next);
-    }
-  }, [authStatus, next, router]);
+    (async () => {
+      if (AMPLIFY_MOCK) return;
+      try {
+        const { tokens } = await fetchAuthSession();
+        if (tokens?.idToken) router.replace(nextUrl);
+      } catch {
+        // not signed in yet — show Authenticator
+      }
+    })();
+  }, [nextUrl, router]);
 
   if (AMPLIFY_MOCK) return null;
 
@@ -43,5 +59,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginInner />
+    </Suspense>
   );
 }
