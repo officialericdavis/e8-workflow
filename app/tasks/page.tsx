@@ -1,10 +1,9 @@
 'use client';
-
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useMemo, useState } from 'react';
 import RequireAuth from '../components/RequireAuth';
-import { CATEGORIES, Client, Status, Task } from '../lib/types';
+import { CATEGORIES, Client, Editor, Status, Task } from '../lib/types';
 import { Store } from '../lib/store';
 
 const card: React.CSSProperties = { background:'#fff', border:'1px solid #edf0f6', borderRadius:16, padding:16, display:'grid', gap:12 };
@@ -21,22 +20,26 @@ const empty: Task = {
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [editors, setEditors] = useState<Editor[]>([]);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Task>(empty);
   const [filterClient, setFilterClient] = useState<string>('');
   const [filterCat, setFilterCat] = useState<string>('');
+  const [filterEditor, setFilterEditor] = useState<string>('');
 
   useEffect(() => {
     setTasks(Store.getTasks());
     setClients(Store.getClients());
+    setEditors(Store.getEditors());
   }, []);
 
   const view = useMemo(() => {
     return tasks.filter(t =>
       (!filterClient || t.clientId === filterClient) &&
-      (!filterCat || t.category === filterCat)
+      (!filterCat || t.category === filterCat) &&
+      (!filterEditor || t.assigneeId === filterEditor)
     );
-  }, [tasks, filterClient, filterCat]);
+  }, [tasks, filterClient, filterCat, filterEditor]);
 
   function saveAll(next: Task[]) { setTasks(next); Store.setTasks(next); }
 
@@ -66,7 +69,7 @@ export default function TasksPage() {
 
   function toggleStatus(t: Task) {
     const ns = nextStatus(t.status);
-    update(t.id, { status: ns, doneAt: ns === 'Done' ? new Date().toISOString() : t.doneAt && undefined });
+    update(t.id, { status: ns, doneAt: ns === 'Done' ? new Date().toISOString() : undefined });
   }
 
   function remove(id: string) {
@@ -77,11 +80,15 @@ export default function TasksPage() {
   return (
     <RequireAuth>
       <main style={{ padding: 24, display:'grid', gap:16 }}>
-        <div style={{ display:'flex', gap:12, alignItems:'center' }}>
+        <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
           <h1 style={{ margin:0, flex:1 }}>Tasks</h1>
           <select value={filterClient} onChange={e=>setFilterClient(e.target.value)} style={control}>
             <option value="">All Clients</option>
             {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select value={filterEditor} onChange={e=>setFilterEditor(e.target.value)} style={control}>
+            <option value="">All Editors</option>
+            {editors.map(ed => <option key={ed.id} value={ed.id}>{ed.name}</option>)}
           </select>
           <select value={filterCat} onChange={e=>setFilterCat(e.target.value)} style={control}>
             <option value="">All Categories</option>
@@ -96,6 +103,7 @@ export default function TasksPage() {
               <tr>
                 <th style={{ textAlign:'left', padding:10 }}>Title</th>
                 <th style={{ textAlign:'left', padding:10 }}>Client</th>
+                <th style={{ textAlign:'left', padding:10 }}>Editor</th>
                 <th style={{ textAlign:'left', padding:10 }}>Category</th>
                 <th style={{ textAlign:'left', padding:10 }}>Status</th>
                 <th style={{ textAlign:'left', padding:10 }}>Due</th>
@@ -105,6 +113,7 @@ export default function TasksPage() {
             <tbody>
               {view.map(t => {
                 const client = clients.find(c => c.id === t.clientId)?.name ?? '—';
+                const editor = editors.find(e => e.id === t.assigneeId)?.name ?? '—';
                 return (
                   <tr key={t.id} style={{ borderTop:'1px solid #edf0f6' }}>
                     <td style={{ padding:10 }}>
@@ -114,6 +123,12 @@ export default function TasksPage() {
                       <select value={t.clientId ?? ''} onChange={e=>update(t.id,{ clientId: e.target.value || undefined })} style={control}>
                         <option value="">—</option>
                         {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </td>
+                    <td style={{ padding:10 }}>
+                      <select value={t.assigneeId ?? ''} onChange={e=>update(t.id,{ assigneeId: e.target.value || undefined })} style={control}>
+                        <option value="">—</option>
+                        {editors.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                       </select>
                     </td>
                     <td style={{ padding:10 }}>
@@ -136,7 +151,7 @@ export default function TasksPage() {
                 );
               })}
               {view.length === 0 && (
-                <tr><td colSpan={6} style={{ padding:20, textAlign:'center', color:'#6b7280' }}>No tasks</td></tr>
+                <tr><td colSpan={7} style={{ padding:20, textAlign:'center', color:'#6b7280' }}>No tasks</td></tr>
               )}
             </tbody>
           </table>
@@ -151,6 +166,10 @@ export default function TasksPage() {
                 <select value={draft.clientId ?? ''} onChange={e=>setDraft({ ...draft, clientId: e.target.value || undefined })} style={{ padding:8, border:'1px solid #dfe4ee', borderRadius:10 }}>
                   <option value="">— Select client —</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <select value={draft.assigneeId ?? ''} onChange={e=>setDraft({ ...draft, assigneeId: e.target.value || undefined })} style={{ padding:8, border:'1px solid #dfe4ee', borderRadius:10 }}>
+                  <option value="">— Assign editor —</option>
+                  {editors.map(ed => <option key={ed.id} value={ed.id}>{ed.name}</option>)}
                 </select>
                 <select value={draft.category} onChange={e=>setDraft({ ...draft, category: e.target.value as any })} style={{ padding:8, border:'1px solid #dfe4ee', borderRadius:10 }}>
                   {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
