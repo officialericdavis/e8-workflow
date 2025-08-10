@@ -1,23 +1,23 @@
 'use client';
+
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useAuthenticator } from '@aws-amplify/ui-react';
 import { AMPLIFY_MOCK } from '../amplify-config';
+import { useRole } from '../providers/RolesProvider';
 
 export default function RequireAuth({ children }: { children: React.ReactNode }) {
-  // In mock mode, allow everything
-  if (AMPLIFY_MOCK) return <>{children}</>;
+  if (AMPLIFY_MOCK) return <>{children}</>; // allow everything in mock mode
 
   const router = useRouter();
   const pathname = usePathname() || '/';
-  const { authStatus } = useAuthenticator((ctx) => [ctx.authStatus]);
+  const { role } = useRole(); // null means not signed in (until RolesProvider loads session)
 
   useEffect(() => {
-    if (authStatus === 'unauthenticated') {
+    if (role === null) {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     }
-  }, [authStatus, router, pathname]);
+  }, [role, router, pathname]);
 
-  if (authStatus === 'configuring' || authStatus === 'unauthenticated') return null;
+  if (role === null) return null; // avoid flashing protected UI
   return <>{children}</>;
 }
