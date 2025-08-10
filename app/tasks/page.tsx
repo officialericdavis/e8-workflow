@@ -31,16 +31,28 @@ export default function TasksPage() {
   const search = useSearchParams();
   const { show } = useToast();
 
+  // helpers
+  function clearNewParam() {
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('new')) {
+        url.searchParams.delete('new');
+        window.history.replaceState({}, '', url.toString());
+      }
+    } catch {}
+  }
+
   // load/save local tasks
   useEffect(() => { try { const raw = localStorage.getItem(KEY); if (raw) setTasks(JSON.parse(raw)); } catch {} }, []);
   useEffect(() => { try { localStorage.setItem(KEY, JSON.stringify(tasks)); } catch {} }, [tasks]);
 
-  // deep-link /tasks?new=1
+  // deep-link /tasks?new=1 — open once, then strip the param
   useEffect(() => {
     if (search.get('new') === '1' && !open) {
       setDraft({ ...emptyTask, id: crypto.randomUUID() });
       setOpen(true);
       setTimeout(() => titleRef.current?.focus(), 30);
+      clearNewParam();
     }
   }, [search, open]);
 
@@ -50,8 +62,9 @@ export default function TasksPage() {
     setDraft({ ...emptyTask, id: crypto.randomUUID() });
     setOpen(true);
     setTimeout(() => titleRef.current?.focus(), 30);
+    clearNewParam();
   }
-  function cancel() { setOpen(false); setDraft(emptyTask); }
+  function cancel() { setOpen(false); setDraft(emptyTask); clearNewParam(); }
   function save() {
     if (!canSave) return;
     setTasks(prev => {
@@ -61,6 +74,7 @@ export default function TasksPage() {
     });
     setOpen(false);
     setDraft(emptyTask);
+    clearNewParam();
     show('Task saved', 'success');
   }
   function remove() {
