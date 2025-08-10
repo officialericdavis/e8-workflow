@@ -1,4 +1,9 @@
-import { Amplify } from 'aws-amplify';
-import awsExports from '../aws-exports'; // adjust path if aws-exports.js is not in root
-
-Amplify.configure(awsExports);
+let awsExports: any = {};
+try {
+  // Amplify Hosting provides aws-exports.js in production; this works locally if present.
+  awsExports = require('../aws-exports').default ?? {};
+} catch {
+  // Fallback so build doesn't fail if file isn't in repo or env.
+  awsExports = {};
+}
+export default awsExports;
