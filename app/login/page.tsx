@@ -39,10 +39,7 @@ export default function LoginPage() {
                 password: { label: 'Password' },
               },
             }}
-            services={{}}
-          >
-            {() => null /* Authenticator will redirect when authed */}
-          </Authenticator>
+          />
         </div>
       </div>
     </div>
