@@ -132,3 +132,7 @@ function Kpi({ title, value }: { title:string; value:string }) {
     </div>
   );
 }
+
+const card: React.CSSProperties = { background:'#fff', border:'1px solid #edf0f6', borderRadius:16, padding:16, display:'grid', gap:12 };
+const th: React.CSSProperties   = { textAlign:'left', fontSize:12, color:'#6b7280', padding:'10px' };
+const td: React.CSSProperties   = { padding:'10px' };
