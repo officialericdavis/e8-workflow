@@ -1,0 +1,20 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-e8workflow-dev-cd537-authRole",
+      "UnauthRoleArn": "arn:aws:iam::043309366307:role/amplify-e8workflow-dev-cd537-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::043309366307:role/amplify-e8workflow-dev-cd537-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-e8workflow-dev-cd537-deployment",
+      "UnauthRoleName": "amplify-e8workflow-dev-cd537-unauthRole",
+      "StackName": "amplify-e8workflow-dev-cd537",
+      "StackId": "arn:aws:cloudformation:us-east-1:043309366307:stack/amplify-e8workflow-dev-cd537/0d2ce320-757e-11f0-b7da-12514dbcd3a9",
+      "AmplifyAppId": "d3o21olvwgi4ec"
+    },
+    "categories": {
+      "auth": {
+        "e8workflowd6a9859c": {}
+      }
+    }
+  }
+}
