@@ -1,4 +1,3 @@
-cat > app/role-test/page.tsx <<'EOF'
 'use client';
 
 import { useRole } from '../providers/RolesProvider';
@@ -6,24 +5,11 @@ import { useRole } from '../providers/RolesProvider';
 export default function RoleTestPage() {
   const { role, setRole, signOut } = useRole();
 
-  const renderRoleContent = () => {
-    switch (role) {
-      case 'admin':
-        return <p style={{ color: 'red' }}>🔑 Admin Panel: You have full access.</p>;
-      case 'manager':
-        return <p style={{ color: 'orange' }}>📋 Manager Dashboard: Manage teams & projects.</p>;
-      case 'editor':
-        return <p style={{ color: 'blue' }}>✏️ Editor Tools: You can edit content.</p>;
-      case 'viewer':
-        return <p style={{ color: 'green' }}>👀 Viewer Mode: Read-only access.</p>;
-      default:
-        return <p>❓ No role selected. Please choose a role.</p>;
-    }
-  };
+  const view = role ? `Current Role: ${role}` : 'Current Role: none';
 
   return (
     <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
-      <h1>Current Role: {role ?? 'none'}</h1>
+      <h1>{view}</h1>
       <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button onClick={() => setRole('admin')}>Set Admin</button>
         <button onClick={() => setRole('manager')}>Set Manager</button>
@@ -31,8 +17,13 @@ export default function RoleTestPage() {
         <button onClick={() => setRole('viewer')}>Set Viewer</button>
         <button onClick={signOut}>Clear Role</button>
       </div>
-      <div style={{ marginTop: 20 }}>{renderRoleContent()}</div>
+      <div style={{ marginTop: 16 }}>
+        {role === 'admin' && <p>🔑 Admin Panel: full access</p>}
+        {role === 'manager' && <p>📋 Manager Dashboard</p>}
+        {role === 'editor' && <p>✏️ Editor Tools</p>}
+        {role === 'viewer' && <p>👀 Viewer Mode</p>}
+        {!role && <p>❓ No role selected</p>}
+      </div>
     </div>
   );
 }
-EOF
