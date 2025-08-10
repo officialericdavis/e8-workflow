@@ -1,7 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import ClientProviders from './providers/ClientProviders';
-import Sidebar from './components/Sidebar';
+import AppShell from './components/AppShell';
 
 export const metadata: Metadata = {
   title: 'E8 Workflow Manager (Mock)',
@@ -13,10 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body style={{ margin: 0, background: '#f6f7fb', color: '#111827' }}>
         <ClientProviders>
-          <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', minHeight: '100dvh' }}>
-            <Sidebar />
-            <main style={{ padding: 24 }}>{children}</main>
-          </div>
+          <AppShell>{children}</AppShell>
         </ClientProviders>
       </body>
     </html>
