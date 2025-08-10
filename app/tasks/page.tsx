@@ -11,6 +11,7 @@ type Status = 'Open' | 'In Progress' | 'Blocked' | 'Done';
 type Task = {
   id: string;
   title: string;
+  client?: string;     // NEW
   assignee?: string;
   due?: string;
   priority?: Priority;
@@ -19,7 +20,7 @@ type Task = {
 };
 
 const KEY = 'e8_tasks';
-const empty: Task = { id:'', title:'', assignee:'', due:'', priority:'Medium', status:'Open', createdAt: Date.now() };
+const empty: Task = { id:'', title:'', client:'', assignee:'', due:'', priority:'Medium', status:'Open', createdAt: Date.now() };
 
 export default function TasksPage() {
   const { role } = useRole();
@@ -41,12 +42,15 @@ export default function TasksPage() {
     const q = query.trim().toLowerCase();
     const base = [...tasks].sort((a,b) => (a.due||'').localeCompare(b.due||''));
     if (!q) return base;
-    return base.filter(t => [t.title, t.assignee, t.priority, t.status].join(' ').toLowerCase().includes(q));
+    return base.filter(t =>
+      [t.title, t.client, t.assignee, t.priority, t.status].join(' ').toLowerCase().includes(q)
+    );
   }, [tasks, query]);
 
   function addTask() {
     if (!canWrite) return;
     if (!draft.title.trim()) { alert('Title required'); return; }
+    if (!draft.client?.trim()) { alert('Client required'); return; }
     const t: Task = { ...draft, id: crypto.randomUUID(), createdAt: Date.now() };
     setTasks(prev => [t, ...prev]);
     setDraft(empty);
@@ -65,7 +69,7 @@ export default function TasksPage() {
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <h1 style={{ margin:0, fontWeight:900 }}>Tasks</h1>
           <div style={{ display:'flex', gap:8 }}>
-            <input placeholder="Search…" value={query} onChange={e=>setQuery(e.target.value)} style={inp}/>
+            <input placeholder="Search by title, client, assignee…" value={query} onChange={e=>setQuery(e.target.value)} style={inp}/>
             <button disabled={!canWrite} onClick={()=>setOpen(true)} style={btnPrimary}>New Task</button>
           </div>
         </div>
@@ -74,13 +78,20 @@ export default function TasksPage() {
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead>
               <tr>
-                <th style={th}>Title</th><th style={th}>Assignee</th><th style={th}>Due</th><th style={th}>Priority</th><th style={th}>Status</th><th style={th}></th>
+                <th style={th}>Title</th>
+                <th style={th}>Client</th>   {/* NEW */}
+                <th style={th}>Assignee</th>
+                <th style={th}>Due</th>
+                <th style={th}>Priority</th>
+                <th style={th}>Status</th>
+                <th style={th}></th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(t => (
                 <tr key={t.id} style={{ borderTop:'1px solid #f3f4f6' }}>
                   <td style={td}>{t.title}</td>
+                  <td style={td}>{t.client || '-'}</td> {/* NEW */}
                   <td style={td}>{t.assignee || '-'}</td>
                   <td style={td}>{t.due || '-'}</td>
                   <td style={td}>{t.priority}</td>
@@ -90,7 +101,7 @@ export default function TasksPage() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={6} style={{ ...td, color:'#6b7280' }}>No tasks (last 90 days).</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={7} style={{ ...td, color:'#6b7280' }}>No tasks (last 90 days).</td></tr>}
             </tbody>
           </table>
         </section>
@@ -98,7 +109,10 @@ export default function TasksPage() {
         {open && (
           <section style={{ background:'#fff', border:'1px solid #edf0f6', borderRadius:16, padding:16, display:'grid', gap:12 }}>
             <h2 style={{ margin:0 }}>New Task</h2>
-            <input placeholder="Title *" value={draft.title} onChange={e=>setDraft({...draft, title:e.target.value})} style={inp}/>
+            <div style={{ display:'grid', gap:8, gridTemplateColumns:'1fr 1fr' }}>
+              <input placeholder="Title *" value={draft.title} onChange={e=>setDraft({...draft, title:e.target.value})} style={inp}/>
+              <input placeholder="Client *" value={draft.client} onChange={e=>setDraft({...draft, client:e.target.value})} style={inp}/>
+            </div>
             <div style={{ display:'grid', gap:8, gridTemplateColumns:'1fr 160px 160px' }}>
               <input placeholder="Assignee" value={draft.assignee} onChange={e=>setDraft({...draft, assignee:e.target.value})} style={inp}/>
               <input type="date" value={draft.due} onChange={e=>setDraft({...draft, due:e.target.value})} style={inp}/>

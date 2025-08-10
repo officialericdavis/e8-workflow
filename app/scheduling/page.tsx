@@ -1,96 +1,170 @@
 'use client';
+
 import RequireAuth from '../components/RequireAuth';
-import { useState, useRef } from 'react';
+import { useRole } from '../providers/RolesProvider';
+import { can } from '@/lib/roles';
+import { useEffect, useMemo, useState } from 'react';
+import { loadLS, saveLS, purgeByAge } from '@/lib/retention';
 
-type Event = { id:string; title:string; date:string; time:string; location:string; crew:string };
+type Item = {
+  id: string;
+  title: string;
+  date?: string;       // YYYY-MM-DD
+  start?: string;      // HH:mm
+  end?: string;        // HH:mm
+  notes?: string;
+  createdAt: number;   // for retention
+};
 
-const seed: Event[] = [
-  { id:'EV-1', title:'YouTube Premiere EP23', date:'2025-08-11', time:'12:00', location:'Studio A', crew:'Luis, Sam' },
-  { id:'EV-2', title:'Client Shoot – MissBehaveTV', date:'2025-08-13', time:'09:30', location:'DTLA', crew:'Neha, Rahul' },
-];
+const KEY = 'e8_sched';
 
 export default function SchedulingPage() {
-  const [rows, setRows] = useState<Event[]>(seed);
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<Event>({ id:'', title:'', date:'', time:'', location:'', crew:'' });
-  const firstRef = useRef<HTMLInputElement>(null);
+  const { role } = useRole();
+  const canRead = can(role, 'schedule:r');
+  const canWrite = can(role, 'schedule:rw');
 
-  function openNew() {
-    setDraft({ id: crypto.randomUUID(), title:'', date:'', time:'', location:'', crew:'' });
-    setOpen(true);
-    setTimeout(()=>firstRef.current?.focus(), 30);
+  const [items, setItems] = useState<Item[]>([]);
+  // new item inputs
+  const [title, setTitle] = useState('');
+  const [date, setDate] = useState('');
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
+  const [notes, setNotes] = useState('');
+  // inline edit state
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+
+  useEffect(() => {
+    const initial = purgeByAge(loadLS<Item[]>(KEY, [], true));
+    setItems(initial);
+  }, []);
+
+  useEffect(() => { saveLS(KEY, items); }, [items]);
+
+  const sorted = useMemo(() => {
+    return [...items].sort((a,b) => (a.date||'').localeCompare(b.date||'') || (a.start||'').localeCompare(b.start||''));
+  }, [items]);
+
+  function addItem() {
+    if (!canWrite) return;
+    if (!title.trim()) { alert('Please enter a title'); return; }
+    const it: Item = {
+      id: crypto.randomUUID(),
+      title: title.trim(),
+      date, start, end, notes,
+      createdAt: Date.now(),
+    };
+    setItems(prev => [it, ...prev]);
+    setTitle(''); setDate(''); setStart(''); setEnd(''); setNotes('');
   }
-  function save() {
-    setRows(prev => [draft, ...prev]);
-    setOpen(false);
+
+  function startEdit(id: string, current: string) {
+    if (!canWrite) return;
+    setEditId(id);
+    setEditTitle(current);
   }
+
+  function saveEdit() {
+    if (!canWrite || !editId) return;
+    const t = editTitle.trim();
+    if (!t) { alert('Title is required'); return; }
+    setItems(prev => prev.map(i => i.id === editId ? { ...i, title: t } : i));
+    setEditId(null);
+    setEditTitle('');
+  }
+
+  function cancelEdit() {
+    setEditId(null);
+    setEditTitle('');
+  }
+
+  function remove(id: string) {
+    if (!canWrite) return;
+    setItems(prev => prev.filter(i => i.id !== id));
+  }
+
+  if (!canRead) return <RequireAuth><div /></RequireAuth>;
 
   return (
     <RequireAuth>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <h1 style={{ marginTop: 0, fontWeight: 900 }}>Scheduling</h1>
-        <button onClick={openNew} style={btnPrimary}>➕ New event</button>
-      </div>
+      <main style={{ display:'grid', gap:16 }}>
+        <h1 style={{ margin:0, fontWeight:900 }}>Scheduling</h1>
 
-      <section style={{ background:'#fff', border:'1px solid #edf0f6', borderRadius:14, overflow:'hidden' }}>
-        <table style={{ width:'100%', borderCollapse:'collapse' }}>
-          <thead style={{ background:'#f7f8fc' }}>
-            <tr>
-              {['Title','Date','Time','Location','Crew'].map(h=>
-                <th key={h} style={{ textAlign:'left', padding:'12px 16px', fontSize:12, color:'#6b7280', textTransform:'uppercase' }}>{h}</th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(r => (
-              <tr key={r.id} style={{ borderTop:'1px solid #f0f2f7' }}>
-                <td style={{ padding:'12px 16px' }}>{r.title}</td>
-                <td style={{ padding:'12px 16px' }}>{new Date(r.date).toLocaleDateString()}</td>
-                <td style={{ padding:'12px 16px' }}>{r.time}</td>
-                <td style={{ padding:'12px 16px' }}>{r.location}</td>
-                <td style={{ padding:'12px 16px' }}>{r.crew}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-
-      {open && (
-        <div role="dialog" aria-modal="true" style={overlay} onClick={()=>setOpen(false)}>
-          <div style={sheet} onClick={e=>e.stopPropagation()}>
-            <h2 style={{ margin:0, fontWeight:900 }}>New Event</h2>
-            <label style={label}>Title
-              <input ref={firstRef} value={draft.title} onChange={(e)=>setDraft(d=>({ ...d, title:e.target.value }))} style={input} />
-            </label>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <label style={label}>Date
-                <input type="date" value={draft.date} onChange={(e)=>setDraft(d=>({ ...d, date:e.target.value }))} style={input} />
-              </label>
-              <label style={label}>Time
-                <input type="time" value={draft.time} onChange={(e)=>setDraft(d=>({ ...d, time:e.target.value }))} style={input} />
-              </label>
-            </div>
-            <label style={label}>Location
-              <input value={draft.location} onChange={(e)=>setDraft(d=>({ ...d, location:e.target.value }))} style={input} />
-            </label>
-            <label style={label}>Crew
-              <input value={draft.crew} onChange={(e)=>setDraft(d=>({ ...d, crew:e.target.value }))} style={input} />
-            </label>
-            <div style={{ display:'flex', justifyContent:'flex-end', gap:10 }}>
-              <button onClick={()=>setOpen(false)} style={btnSecondary}>Cancel</button>
-              <button onClick={save} style={btnPrimary}>Save</button>
-            </div>
+        {/* Creator */}
+        <section style={{ background:'#fff', border:'1px solid #edf0f6', borderRadius:16, padding:16, display:'grid', gap:12, opacity: canWrite ? 1 : .55 }}>
+          <h2 style={{ margin:0 }}>New Item</h2>
+          <div style={{ display:'grid', gap:8, gridTemplateColumns:'1fr 160px 120px 120px', alignItems:'center' }}>
+            <input placeholder="Title *" value={title} onChange={e=>setTitle(e.target.value)} style={inp} />
+            <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={inp} />
+            <input type="time" value={start} onChange={e=>setStart(e.target.value)} style={inp} />
+            <input type="time" value={end} onChange={e=>setEnd(e.target.value)} style={inp} />
           </div>
-        </div>
-      )}
+          <textarea placeholder="Notes (optional)" value={notes} onChange={e=>setNotes(e.target.value)} style={{ ...inp, minHeight:90 }} />
+          <div>
+            <button disabled={!canWrite} onClick={addItem} style={btnPrimary}>Add to schedule</button>
+          </div>
+          {!canWrite && <div style={{ color:'#6b7280', fontSize:12 }}>View only — your role cannot create schedule items.</div>}
+        </section>
+
+        {/* List */}
+        <section style={{ background:'#fff', border:'1px solid #edf0f6', borderRadius:16, padding:8 }}>
+          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+            <thead>
+              <tr>
+                <th style={th}>Title</th>
+                <th style={th}>Date</th>
+                <th style={th}>Start</th>
+                <th style={th}>End</th>
+                <th style={th}>Notes</th>
+                <th style={th}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map(i => {
+                const editing = i.id === editId;
+                return (
+                  <tr key={i.id} style={{ borderTop:'1px solid #f3f4f6' }}>
+                    <td style={td}>
+                      {editing ? (
+                        <input value={editTitle} onChange={e=>setEditTitle(e.target.value)} style={{ ...inp, height:32 }} />
+                      ) : i.title}
+                    </td>
+                    <td style={td}>{i.date || '-'}</td>
+                    <td style={td}>{i.start || '-'}</td>
+                    <td style={td}>{i.end || '-'}</td>
+                    <td style={td}>{i.notes || '-'}</td>
+                    <td style={{ ...td, textAlign:'right', whiteSpace:'nowrap' }}>
+                      {canWrite && (
+                        editing ? (
+                          <>
+                            <button onClick={saveEdit} style={btnPrimarySm}>Save</button>
+                            <button onClick={cancelEdit} style={btnGhost}>Cancel</button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={()=>startEdit(i.id, i.title)} style={btnGhost}>Edit</button>
+                            <button onClick={()=>remove(i.id)} style={btnGhost}>Delete</button>
+                          </>
+                        )
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {sorted.length === 0 && (
+                <tr><td colSpan={6} style={{ ...td, color:'#6b7280' }}>No scheduled items (last 90 days).</td></tr>
+              )}
+            </tbody>
+          </table>
+        </section>
+      </main>
     </RequireAuth>
   );
 }
 
-const input:React.CSSProperties = { height:44, padding:'0 14px', border:'1px solid #d8dce6', borderRadius:12, fontSize:16 };
-const label:React.CSSProperties = { display:'grid', gap:6, fontWeight:700 };
-const btnBase:React.CSSProperties = { height:44, padding:'0 16px', borderRadius:12, border:'1px solid transparent', fontWeight:900, cursor:'pointer' };
-const btnPrimary:React.CSSProperties = { ...btnBase, background:'#111827', color:'#fff', borderColor:'#111827' };
-const btnSecondary:React.CSSProperties = { ...btnBase, background:'#fff', borderColor:'#e5e7eb' };
-const overlay:React.CSSProperties = { position:'fixed', inset:0, background:'rgba(17,24,39,.28)', display:'grid', placeItems:'center', padding:16, zIndex:50 };
-const sheet:React.CSSProperties   = { width:'100%', maxWidth:520, background:'#fff', borderRadius:16, padding:20, boxShadow:'0 20px 50px rgba(0,0,0,.25)', display:'grid', gap:12 };
+const th: React.CSSProperties = { textAlign:'left', fontSize:12, color:'#6b7280', padding:'8px 10px' };
+const td: React.CSSProperties = { padding:'8px 10px' };
+const inp: React.CSSProperties = { height:40, border:'1px solid #e5e7eb', borderRadius:12, padding:'0 12px' };
+const btnPrimary: React.CSSProperties = { height:40, padding:'0 14px', borderRadius:12, fontWeight:900, border:'1px solid #111827', background:'#111827', color:'#fff' };
+const btnPrimarySm: React.CSSProperties = { height:32, padding:'0 12px', borderRadius:10, fontWeight:700, border:'1px solid #111827', background:'#111827', color:'#fff', marginRight:6 };
+const btnGhost: React.CSSProperties = { height:32, padding:'0 10px', borderRadius:10, border:'1px solid #e5e7eb', background:'#fff', marginLeft:6 };
