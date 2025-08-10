@@ -1,6 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import ClientProviders from '@providers/ClientProviders';
+import ClientProviders from './providers/ClientProviders';
 
 export const metadata: Metadata = {
   title: 'E8 Workflow Manager (Mock)',
