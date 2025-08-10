@@ -1,3 +1,4 @@
+import './amplify-config';
 import './globals.css'
 import type { Metadata } from 'next'
 
