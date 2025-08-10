@@ -8,6 +8,7 @@ import { Store, initDefaults } from '../lib/store';
 import RequireAuth from '../components/RequireAuth';
 
 const card: React.CSSProperties = { background:'#fff', border:'1px solid #edf0f6', borderRadius:16, padding:16, display:'grid', gap:12 };
+const inputNarrow: React.CSSProperties = { width: 90, textAlign:'right', padding:'6px 8px', border:'1px solid #dfe4ee', borderRadius:8 };
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -83,7 +84,7 @@ export default function ClientsPage() {
                           type="number" min={0}
                           value={cl.targets[cat] ?? 0}
                           onChange={(e) => updateTarget(cl.id, cat, Number(e.target.value))}
-                          style="width:90px; text-align:right; padding:6px 8px; border:1px solid #dfe4ee; border-radius:8px;"
+                          style={inputNarrow}
                         />
                       </td>
                     ))}

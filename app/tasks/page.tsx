@@ -8,6 +8,7 @@ import { CATEGORIES, Client, Status, Task } from '../lib/types';
 import { Store } from '../lib/store';
 
 const card: React.CSSProperties = { background:'#fff', border:'1px solid #edf0f6', borderRadius:16, padding:16, display:'grid', gap:12 };
+const control: React.CSSProperties = { padding:'6px 8px', border:'1px solid #e5e7eb', borderRadius:8 };
 
 const empty: Task = {
   id: '',
@@ -78,11 +79,11 @@ export default function TasksPage() {
       <main style={{ padding: 24, display:'grid', gap:16 }}>
         <div style={{ display:'flex', gap:12, alignItems:'center' }}>
           <h1 style={{ margin:0, flex:1 }}>Tasks</h1>
-          <select value={filterClient} onChange={e=>setFilterClient(e.target.value)} style="padding:8px;border:1px solid #dfe4ee;border-radius:10px;">
+          <select value={filterClient} onChange={e=>setFilterClient(e.target.value)} style={control}>
             <option value="">All Clients</option>
             {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <select value={filterCat} onChange={e=>setFilterCat(e.target.value)} style="padding:8px;border:1px solid #dfe4ee;border-radius:10px;">
+          <select value={filterCat} onChange={e=>setFilterCat(e.target.value)} style={control}>
             <option value="">All Categories</option>
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
@@ -107,16 +108,16 @@ export default function TasksPage() {
                 return (
                   <tr key={t.id} style={{ borderTop:'1px solid #edf0f6' }}>
                     <td style={{ padding:10 }}>
-                      <input value={t.title} onChange={e=>update(t.id,{ title:e.target.value })} style="width:100%;padding:6px 8px;border:1px solid #e5e7eb;border-radius:8px;" />
+                      <input value={t.title} onChange={e=>update(t.id,{ title:e.target.value })} style={{ ...control, width:'100%' }} />
                     </td>
                     <td style={{ padding:10 }}>
-                      <select value={t.clientId ?? ''} onChange={e=>update(t.id,{ clientId: e.target.value || undefined })} style="padding:6px 8px;border:1px solid #e5e7eb;border-radius:8px;">
+                      <select value={t.clientId ?? ''} onChange={e=>update(t.id,{ clientId: e.target.value || undefined })} style={control}>
                         <option value="">—</option>
                         {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                     </td>
                     <td style={{ padding:10 }}>
-                      <select value={t.category} onChange={e=>update(t.id,{ category: e.target.value as any })} style="padding:6px 8px;border:1px solid #e5e7eb;border-radius:8px;">
+                      <select value={t.category} onChange={e=>update(t.id,{ category: e.target.value as any })} style={control}>
                         {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </td>
@@ -126,7 +127,7 @@ export default function TasksPage() {
                       </button>
                     </td>
                     <td style={{ padding:10 }}>
-                      <input type="date" value={t.due ?? ''} onChange={e=>update(t.id,{ due: e.target.value })} style="padding:6px 8px;border:1px solid #e5e7eb;border-radius:8px;" />
+                      <input type="date" value={t.due ?? ''} onChange={e=>update(t.id,{ due: e.target.value })} style={control} />
                     </td>
                     <td style={{ padding:10 }}>
                       <button onClick={()=>remove(t.id)} style={{ padding:'6px 10px', border:'1px solid #f3d1d1', color:'#991b1b', borderRadius:8, background:'#fff' }}>Delete</button>
@@ -145,16 +146,16 @@ export default function TasksPage() {
           <section style={card}>
             <h3 style={{ margin:0 }}>New Task</h3>
             <div style={{ display:'grid', gap:12 }}>
-              <input placeholder="Title" value={draft.title} onChange={e=>setDraft({ ...draft, title:e.target.value })} style="padding:8px;border:1px solid #dfe4ee;border-radius:10px;" />
+              <input placeholder="Title" value={draft.title} onChange={e=>setDraft({ ...draft, title:e.target.value })} style={{ padding:8, border:'1px solid #dfe4ee', borderRadius:10 }} />
               <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
-                <select value={draft.clientId ?? ''} onChange={e=>setDraft({ ...draft, clientId: e.target.value || undefined })} style="padding:8px;border:1px solid #dfe4ee;border-radius:10px;">
+                <select value={draft.clientId ?? ''} onChange={e=>setDraft({ ...draft, clientId: e.target.value || undefined })} style={{ padding:8, border:'1px solid #dfe4ee', borderRadius:10 }}>
                   <option value="">— Select client —</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                <select value={draft.category} onChange={e=>setDraft({ ...draft, category: e.target.value as any })} style="padding:8px;border:1px solid #dfe4ee;border-radius:10px;">
+                <select value={draft.category} onChange={e=>setDraft({ ...draft, category: e.target.value as any })} style={{ padding:8, border:'1px solid #dfe4ee', borderRadius:10 }}>
                   {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
-                <input type="date" value={draft.due ?? ''} onChange={e=>setDraft({ ...draft, due:e.target.value })} style="padding:8px;border:1px solid #dfe4ee;border-radius:10px;" />
+                <input type="date" value={draft.due ?? ''} onChange={e=>setDraft({ ...draft, due:e.target.value })} style={{ padding:8, border:'1px solid #dfe4ee', borderRadius:10 }} />
               </div>
               <div style={{ display:'flex', gap:8 }}>
                 <button onClick={saveDraft} style={{ padding:'8px 12px', borderRadius:10, border:'1px solid #dfe4ee', background:'#111827', color:'#fff' }}>Save</button>
