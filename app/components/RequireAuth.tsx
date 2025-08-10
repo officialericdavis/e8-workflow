@@ -1,9 +1,14 @@
 'use client';
+import React from 'react';
 
-/**
- * Temporary pass-through auth guard.
- * Swap the body later to enforce Cognito (redirect to /login if not signed in).
- */
 export default function RequireAuth({ children }: { children: React.ReactNode }) {
+  // If Cognito env vars aren’t present, let everything through (mock mode).
+  const cfgReady = Boolean(
+    process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID &&
+    process.env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID
+  );
+  if (!cfgReady) return <>{children}</>;
+
+  // Minimal placeholder gate; when you finish real auth, replace this.
   return <>{children}</>;
 }
