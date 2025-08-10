@@ -1,9 +1,6 @@
-'use client';
-
-import './amplify-config';
 import './globals.css';
 import type { Metadata } from 'next';
-import { RolesProvider } from '@providers/RolesProvider';
+import ClientProviders from '@providers/ClientProviders';
 
 export const metadata: Metadata = {
   title: 'E8 Workflow Manager (Mock)',
@@ -14,9 +11,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <RolesProvider>
-          {children}
-        </RolesProvider>
+        <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
   );
