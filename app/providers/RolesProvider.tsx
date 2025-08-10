@@ -24,7 +24,6 @@ export function RolesProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = () => setRole(null);
-
   return <Ctx.Provider value={{ role, setRole, signOut }}>{children}</Ctx.Provider>;
 }
 
