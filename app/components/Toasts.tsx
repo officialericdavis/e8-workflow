@@ -6,9 +6,10 @@ type Toast = { id: string; message: string; variant: Variant };
 type ToastCtx = { show: (message: string, variant?: Variant) => void };
 
 const Ctx = createContext<ToastCtx | undefined>(undefined);
+
 export function useToast() {
   const c = useContext(Ctx);
-  if (!c) throw new Error('useToast must be used within ToastProvider');
+  if (!c) throw new Error('useToast must be used within ToastsProvider');
   return c;
 }
 
@@ -18,7 +19,7 @@ function color(v: Variant) {
   return '#111827';
 }
 
-export default function ToastProvider({ children }: { children: React.ReactNode }) {
+function ToastsProviderInner({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const show = useCallback((message: string, variant: Variant = 'info') => {
     const id = Math.random().toString(36).slice(2);
@@ -39,3 +40,8 @@ export default function ToastProvider({ children }: { children: React.ReactNode 
     </Ctx.Provider>
   );
 }
+
+export default function ToastsProvider(props: { children: React.ReactNode }) {
+  return <ToastsProviderInner {...props} />;
+}
+export { ToastsProviderInner as ToastsProvider };
